@@ -6,7 +6,7 @@
 #define APP_ADDR 0x20000000
 #define MAX_FW   (200 * 1024)
 
-/******** UART + CLOCK HW DEFINITIONS *********/
+/******** UART + CLOCK HW DEFINITIONS *******/
 
 #define RESETS_BASE 0x4000C000
 #define RESETS_RESET       (RESETS_BASE + 0x0)

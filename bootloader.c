@@ -3,7 +3,7 @@
 #define PUT32(a,v) (*(volatile unsigned int*)(a)) = (v)
 #define GET32(a)   (*(volatile unsigned int*)(a))
 
-#define APP_ADDR 0x20001000
+#define APP_ADDR 0x20000000
 #define MAX_FW   (200 * 1024)
 
 /******** UART + CLOCK HW DEFINITIONS *********/
@@ -146,7 +146,7 @@ __attribute__((section(".boot.entry"))) int main(void)
     reset_peripherals();
     uart_init();
 
-//	led_init();
+	led_init();
 
 	for(int i = 0; i < 5; i++)
 	{

@@ -1,38 +1,39 @@
-;@ Copyright (c) 2023 CarlosFTM
-;@ This code is licensed under MIT license (see LICENSE.txt for details)
+        .cpu cortex-m0plus
+        .thumb
 
-	.cpu cortex-m0plus
-	.thumb
-
-/* vector table */
-	.section .vectors, "ax"
-	.align 2
-	.global _vectors
+/* Vector Table */
+        .section .vectors, "ax"
+        .align 2
+        .global _vectors
 _vectors:
-	.word 0x20042000
-	.word _reset
+        .word 0x20041000      /* Initial Stack Pointer (top of APP RAM) */
+        .word _reset          /* Reset Handler */
 
-/* reset handler */
-	.thumb_func
-	.global _reset
+/* Reset Handler */
+        .thumb_func
+        .global _reset
 _reset:
-	ldr r0, =0x20042000  ;@ Stack Pointer
-	mov sp, r0
+        /* Setup Stack explicitly */
+        ldr r0, =0x20041000
+        mov sp, r0
 
-	ldr  r3, =0x4000f000  ;@ Resets.reset (Atomic bitmask clear)
-	movs r2, #32          ;@ IO_BANK0
-	str  r2, [r3, #0]
+        /* Release IO_BANK0 reset */
+        ldr  r3, =0x4000f000
+        movs r2, #32
+        str  r2, [r3, #0]
 
-	ldr  r3, =0x400140cc  ;@IO_BANK0.GPIO25_CTRL
-	movs r2, #5           ;@Function 5 (SIO)
-	str  r2, [r3, #0]
+        /* GPIO25 to SIO function */
+        ldr  r3, =0x400140cc
+        movs r2, #5
+        str  r2, [r3, #0]
 
-	ldr  r3, =0xd0000020  ;@SIO_BASE.GPIO_OE
-	movs r2, #128         ;@GPIO25
-	lsl  r2, r2, #18
-	str  r2, [r3, #0]
-	
-	b main
-	b .
+        /* GPIO25 Output Enable */
+        ldr  r3, =0xd0000020
+        movs r2, #128
+        lsl  r2, r2, #18
+        str  r2, [r3, #0]
 
+        b main
+        b .
 .align 4
+

@@ -1,6 +1,6 @@
 MEMORY
 {
-    RAM (rx) : ORIGIN = 0x20001000, LENGTH = 240K
+    RAM (rx) : ORIGIN = 0x20000000, LENGTH = 0x41000
 }
 
 SECTIONS
@@ -9,7 +9,7 @@ SECTIONS
 
     .text :
     {
-        *(.vectors)     /* MUST be first: MSP + Reset Handler */
+        *(.vectors)     /* MUST BE FIRST: MSP + Reset Handler */
         *(.entry)
         *(.text*)
         *(.rodata*)

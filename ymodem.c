@@ -9,6 +9,7 @@ extern uint8_t uart_getc_blocking(void);
 #define GET32(a) (*(volatile unsigned int *)(a))
 
 #define UART0_BASE 0x40034000
+#define UART_DR    (UART0_BASE + 0x00)
 #define UART_FR    (UART0_BASE + 0x18)
 
 /******** YMODEM DEFINES ********/
@@ -22,7 +23,6 @@ extern uint8_t uart_getc_blocking(void);
 
 #define PACKET_SIZE     128
 #define PACKET_1K_SIZE  1024
-
 
 static uint16_t crc16(const uint8_t *buf, int len)
 {
@@ -38,27 +38,30 @@ static uint16_t crc16(const uint8_t *buf, int len)
     return crc;
 }
 
-
 /******** YMODEM RECEIVE ********/
 int ymodem_receive(uint8_t *dst, uint32_t max, uint32_t *received)
 {
     uint8_t packet[1031];
-    uint8_t blk = 0;        // IMPORTANT: start from block 0
+    uint8_t blk = 0;
     uint32_t offset = 0;
+
+    /* ----------- IMPORTANT ----------
+       Flush any garbage in UART RX before handshake
+    ---------------------------------- */
+    while (!(GET32(UART_FR) & (1 << 4)))
+        (void)GET32(UART_DR);
 
     /***** Send 'C' continuously until sender responds *****/
     while (1)
     {
         uart_putc(CRC_REQ);
 
-        // small delay
         for (volatile int i = 0; i < 500000; i++);
 
-        // RX not empty?
+        /* DO NOT EXIT unless receiver really starts */
         if (!(GET32(UART_FR) & (1 << 4)))
             break;
     }
-
 
     /******** RECEIVE LOOP ********/
     while (1)
@@ -69,8 +72,8 @@ int ymodem_receive(uint8_t *dst, uint32_t max, uint32_t *received)
         {
             uint32_t size = (start == SOH) ? PACKET_SIZE : PACKET_1K_SIZE;
 
-            uint8_t block   = uart_getc_blocking();
-            uint8_t invblk  = uart_getc_blocking();
+            uint8_t block  = uart_getc_blocking();
+            uint8_t invblk = uart_getc_blocking();
 
             if ((block + invblk) != 0xFF)
             {
@@ -87,32 +90,27 @@ int ymodem_receive(uint8_t *dst, uint32_t max, uint32_t *received)
 
             uint16_t calc = crc16(packet, size);
 
+            /******** CRC HANDLE ********/
             if (rx_crc != calc)
             {
+                /* Block 0 CRC mismatch happens with some terminals → tolerate */
+                if (block == 0)
+                {
+                    uart_putc(ACK);
+                    uart_putc('C');
+                    blk = 1;
+                    continue;
+                }
+
                 uart_putc(NAK);
                 continue;
             }
-			/*if (rx_crc != calc)
-			{
-    			// For Block0 some senders vary CRC — ignore mismatch
-    			if (block == 0)
-    			{
-        			uart_putc(ACK);
-        			uart_putc('C');
-        			blk = 1;
-        			continue;
-    			}
 
-    			uart_putc(NAK);
-    			continue;
-			}*/
-
-
-            /******** BLOCK 0 (Header: filename + size) ********/
+            /******** BLOCK 0 (Header) ********/
             if (block == 0)
             {
                 uart_putc(ACK);
-                uart_putc('C');     // VERY IMPORTANT
+                uart_putc('C');
                 blk = 1;
                 continue;
             }
@@ -128,26 +126,21 @@ int ymodem_receive(uint8_t *dst, uint32_t max, uint32_t *received)
 
             uart_putc(ACK);
         }
+
         else if (start == EOT)
         {
-			// First EOT --> reply NAK 
             uart_putc(NAK);
+            start = uart_getc_blocking();
 
-			// Wait for the second EOT 
-			start= uart_getc_blocking();
+            if (start == EOT)
+            {
+                uart_putc(ACK);
+                break;
+            }
 
-			if(start == EOT)
-			{
-				uart_putc(ACK);
-				break;            // Now Exit cleanly
-        	}
-			continue;
-		}
-		/*else if (start == EOT)
-		{
-			uart_putc(ACK); // acknowledge end of transfer
-			break;
-		}*/
+            continue;
+        }
+
         else if (start == CAN)
         {
             return -2;

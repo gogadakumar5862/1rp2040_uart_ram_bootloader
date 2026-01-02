@@ -6,7 +6,7 @@ MEMORY
 SECTIONS
 {
     .text : {
-                        . = ORIGIN(FLASH);
-                        KEEP(*(.boot2))
+                  . = ORIGIN(FLASH);
+				  KEEP(*(.boot2))
             } > FLASH
 }

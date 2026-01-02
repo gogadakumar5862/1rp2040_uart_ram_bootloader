@@ -6,7 +6,8 @@ AFLAGS  = --warn --fatal-warnings -mcpu=$(CPU) -g
 CFLAGS  = -mcpu=$(CPU) -nostartfiles -ffreestanding -g -O0 -fpic -mthumb -c
 LDFLAGS = -nostdlib
 
-PICO_FAMILY_ADDR = 0x20001000
+# Application must load at start of RAM
+PICO_FAMILY_ADDR = 0x20000000
 
 all: $(NAME).bin $(NAME).uf2
 
